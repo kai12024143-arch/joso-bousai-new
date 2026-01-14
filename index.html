@@ -3,77 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常総コミュニティ防災プラットフォーム</title>
+    <title>常総防災マップ</title>
     <style>
-        #map {
-            height: 600px;
-            width: 100%;
-            border: 2px solid #333;
-            margin-bottom: 20px;
-        }
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        #post-text {
-            width: 100%;
-            height: 80px;
-            margin-bottom: 10px;
-            box-sizing: border-box;
-        }
-        #emergency-categories {
-            display: none;
-            gap: 15px;
-            margin-bottom: 15px;
-            padding: 10px;
-            background-color: #ffe0e0;
-            border-radius: 5px;
-        }
-        #emergency-categories label {
-            display: inline-flex;
-            align-items: center;
-            padding: 5px 10px;
-            border: 1px solid #ff4444;
-            background-color: white;
-            border-radius: 5px;
-            color: #d32f2f;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        #mode-toggle {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin-bottom: 15px;
-            cursor: pointer;
-        }
+        #map { height: 600px; width: 100%; border: 1px solid #ccc; }
+        body { font-family: sans-serif; margin: 20px; background-color: #f8f9fa; }
+        h2 { text-align: center; color: #333; }
+        #post-form { margin-top: 20px; padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; margin: 20px auto; }
+        textarea { width: 100%; height: 80px; margin-bottom: 15px; display: block; border: 2px solid #eee; border-radius: 8px; padding: 10px; font-size: 16px; box-sizing: border-box; }
+        select { margin-bottom: 15px; padding: 12px; font-size: 16px; width: 100%; border: 2px solid #eee; border-radius: 8px; background-color: #fff; }
+        .legend { margin: 10px auto; padding: 15px; background: #fff; border-radius: 12px; text-align: center; font-size: 0.85em; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 600px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        button { padding: 15px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 18px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
     </style>
 </head>
 <body>
 
+    <h2>常総コミュニティ防災マップ</h2>
     <div id="map"></div>
 
-    <button id="mode-toggle">非常時モードに切り替え</button>
+    <div class="legend">
+        <div>🚨 赤：救助要請（大）</div>
+        <div>⚠️ 黄：被害あり</div>
+        <div>✅ 緑：被害なし</div>
+        <div style="color:#666;">（淡色は通常時の情報）</div>
+    </div>
 
     <form id="post-form">
-        <textarea id="post-text" placeholder="状況をつぶやいてください..."></textarea>
-        
-        <div id="emergency-categories">
-            <label><input type="radio" name="category" value="被害無し"> 被害無し</label>
-            <label><input type="radio" name="category" value="被害あり"> 被害あり</label>
-            <label><input type="radio" name="category" value="支援要請"> 支援要請</label>
-        </div>
-        
-        <button type="submit" style="padding:10px 20px; font-size:16px;">投稿（位置情報必須）</button>
+        <label>【今の状況を選択】</label>
+        <select id="post-category">
+            <optgroup label="🚨 緊急・被害報告">
+                <option value="red">🔴 救助要請（至急！）</option>
+                <option value="yellow">🟡 被害あり（浸水・損壊）</option>
+                <option value="green">🟢 被害なし（無事報告）</option>
+            </optgroup>
+            <optgroup label="🌸 通常時の情報共有">
+                <option value="pale-red">淡い赤（注意喚起・小規模トラブル）</option>
+                <option value="pale-blue">淡い青（水場・道路情報）</option>
+                <option value="pale-yellow">淡い黄（お店・生活情報）</option>
+                <option value="pale-green">淡い緑（自然・憩いの場）</option>
+            </optgroup>
+        </select>
+
+        <label>【詳細内容】</label>
+        <textarea id="post-text" placeholder="詳細を入力してください..."></textarea>
+        <button type="submit">投稿する</button>
     </form>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-    <script src="app.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMOr6Kag-PCGL6piRVtjCDukk01aurb1M",
+            authDomain: "joso-13c95.firebaseapp.com",
+            projectId: "joso-13c95",
+            storageBucket: "joso-13c95.firebasestorage.app",
+            messagingSenderId: "659788884587",
+            appId: "1:659788884587:web:39b9a1b840039c24875f2e"
+        };
+        
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB7hvh-OUCTVM62geqN543IMtgEWl-eeTQ&callback=initMap"></script>
+        let map;
+        let markers = [];
 
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 14, center: { lat: 35.9897, lng: 139.9791 }
+            });
+            loadPosts(); 
+        }
+
+        // ★色とサイズを指定してピン画像(SVG)を作る関数
+        function createMarkerIcon(color, size) {
+            return {
+                path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
+                fillColor: color,
+                fillOpacity: 1,
+                strokeColor: '#000',
+                strokeWeight: 1,
+                scale: size / 20, // 基準サイズ20に対しての倍率
+                labelOrigin: new google.maps.Point(0, -30)
+            };
+        }
+
+        function loadPosts() {
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+
+            db.collection('posts').orderBy('timestamp', 'desc').limit(50).get().then((snapshot) => {
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if(!data.lat || !data.lng) return;
+
+                    let color = "#888"; // デフォルト
+                    let size = 25;      // デフォルトサイズ
+
+                    // カテゴリーごとの色とサイズ設定
+                    switch(data.category) {
+                        case "red": color = "#FF0000"; size = 50; break; // 救助要請：濃い赤・特大
+                        case "yellow": color = "#FFD700"; size = 30; break; // 被害あり：金/黄・中
+                        case "green": color = "#32CD32"; size = 25; break;  // 被害なし：緑・通常
+                        case "pale-red": color = "#FFADAD"; size = 22; break; // 淡い赤
+                        case "pale-blue": color = "#A0C4FF"; size = 22; break; // 淡い青
+                        case "pale-yellow": color = "#FDFFB6"; size = 22; break; // 淡い黄
+                        case "pale-green": color = "#CAFFBF"; size = 22; break; // 淡い緑
+                    }
+
+                    const marker = new google.maps.Marker({
+                        position: { lat: data.lat, lng: data.lng },
+                        map: map,
+                        icon: createMarkerIcon(color, size),
+                        zIndex: (data.category === "red") ? 100 : 1
+                    });
+
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: `<div style="color:#333;">${data.text}</div>`
+                    });
+
+                    marker.addListener('click', () => infoWindow.open(map, marker));
+                    markers.push(marker);
+                });
+            });
+        }
+
+        document.getElementById('post-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = document.getElementById('post-text').value;
+            const category = document.getElementById('post-category').value;
+            if (!text.trim()) return;
+
+            navigator.geolocation.getCurrentPosition((pos) => {
+                db.collection('posts').add({
+                    text: text, category: category,
+                    lat: pos.coords.latitude, lng: pos.coords.longitude,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    document.getElementById('post-text').value = '';
+                    alert("投稿しました！");
+                    loadPosts();
+                });
+            });
+        });
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB7hvh-OUCTVM62geqN543IMtgEWl-eeTQ&callback=initMap"></script>
 </body>
 </html>
