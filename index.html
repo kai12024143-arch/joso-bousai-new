@@ -109,9 +109,9 @@
         </div>
         <div class="emergency-ui">
             <div class="color-selector">
-                <div class="circle-btn c-red" onclick="pick('red', this, '🚨 救助要請（至急！）')">🚨</div>
-                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '⚠️ 被害あり（建物・浸水）')">⚠️</div>
-                <div class="circle-btn c-green" onclick="pick('green', this, '🍵 被害なし（無事報告）')">🍵</div>
+                <div class="circle-btn c-red" onclick="pick('red', this, '🚨 救助要請')"></div>
+                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '⚠️ 被害あり')"></div>
+                <div class="circle-btn c-green" onclick="pick('green', this, '🍵 被害なし')"></div>
             </div>
             <div id="btn-desc" class="btn-guide">🚨 救助要請（至急！）</div>
         </div>
@@ -221,9 +221,9 @@
             markers = [];
             
             const emergencyLabels = {
-                'red': '🚨 救助要請（至急！）',
-                'yellow': '⚠️ 被害あり（建物・浸水）',
-                'green': '🍵 被害なし（無事報告）'
+                'red': '🚨 救助要請',
+                'yellow': '⚠️ 被害あり',
+                'green': '🍵 被害なし'
             };
 
             allDocsData.forEach((item, index) => {
