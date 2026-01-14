@@ -51,7 +51,7 @@
     <header><h1 id="title">JORFOR MAP</h1></header>
     <div class="mode-switcher">
         <div id="m-n" class="mode-btn n-active" onclick="switchMode('normal')">通常モード</div>
-        <div id="m-e" class="mode-btn" onclick="switchMode('emergency')">防災モード</div>
+        <div id="m-e" class="mode-btn" onclick="switchMode('emergency')">非常時モード</div>
     </div>
 
     <div id="map"></div>
@@ -68,16 +68,16 @@
 
         <div class="emergency-ui">
             <div class="color-selector">
-                <div class="circle-btn c-red" onclick="pick('red', this, '🚨 救助要請（至急！）')">🚨</div>
-                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '🟡 被害あり（建物・浸水）')">🟡</div>
-                <div class="circle-btn c-green" onclick="pick('green', this, '🟢 被害なし（無事報告）')">🟢</div>
+                <div class="circle-btn c-red" onclick="pick('red', this, '🚨 救助要請')"></div>
+                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '🟡 被害あり')"></div>
+                <div class="circle-btn c-green" onclick="pick('green', this, '🟢 被害なし')"></div>
             </div>
             <div id="btn-desc" class="btn-guide">🚨 救助要請（至急！）</div>
         </div>
 
         <input type="hidden" id="selected-val" value="pale-green">
         <textarea id="post-text" placeholder="メッセージを入力..."></textarea>
-        <button type="submit" id="post-button">みんなに教える</button>
+        <button type="submit" id="post-button">つぶやく</button>
     </form>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -162,7 +162,7 @@
                 if (counts[cat] > 4) return; // 1色につき最新4個まで
 
                 let color = "#A0C4FF", size = 22, z = 1;
-                const labels = {'red':'🚨救助要請','yellow':'⚠️被害あり','green':'✅無事報告','pale-red':'注意','pale-blue':'生活','pale-yellow':'発見','pale-green':'自然'};
+                const labels = {'red':'🚨救助要請','yellow':'⚠️被害あり','green':'✅被害なし'};
                 
                 switch(cat) {
                     case 'red': color='#ff0000'; size=50; z=100; break;
@@ -189,7 +189,7 @@
 
                 const iw = new google.maps.InfoWindow({ 
                     content: `<div style="color:#333; min-width:160px;">
-                                <div style="margin-bottom:5px; color:#777; font-size:11px;">⏰ ${time} 【${labels[cat]||'情報'}】</div>
+                                <div style="margin-bottom:5px; color:#777; font-size:11px;">${time} 【${labels[cat]||'情報'}】</div>
                                 <div style="font-size:14px; font-weight:bold;">${d.text}</div>
                                 <button class="hide-btn" onclick="hidePost('${id}')">非表示にする</button>
                               </div>` 
