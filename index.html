@@ -7,67 +7,76 @@
     <style>
         body { font-family: sans-serif; margin: 0; background-color: #f0f7f9; transition: 0.3s; }
         #map { height: 450px; width: 100%; border-bottom: 2px solid #ddd; }
-        header { background: #fff; padding: 12px; text-align: center; border-bottom: 1px solid #eee; transition: 0.3s; }
+        header { background: #fff; padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
         h1 { margin: 0; font-size: 1.1rem; }
-        .mode-switcher { display: flex; justify-content: center; gap: 10px; padding: 10px; background: #fff; transition: 0.3s; }
-        .mode-btn { padding: 6px 12px; border-radius: 20px; border: 2px solid #ddd; cursor: pointer; font-size: 0.85rem; }
+        .mode-switcher { display: flex; justify-content: center; gap: 10px; padding: 10px; background: #fff; }
+        .mode-btn { padding: 8px 16px; border-radius: 20px; border: 2px solid #ddd; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
         
-        #post-form { margin: 15px; padding: 20px; background: #fff; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); transition: 0.3s; }
-        label { display: block; margin-bottom: 15px; font-weight: bold; text-align: center; font-size: 0.9rem; }
+        #post-form { margin: 15px; padding: 20px; background: #fff; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         textarea { width: 100%; height: 70px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #eee; padding: 10px; font-size: 16px; box-sizing: border-box; }
-        #post-button { padding: 14px; color: white; border: none; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1rem; font-weight: bold; transition: 0.3s; }
+        #post-button { padding: 14px; color: white; border: none; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1.1rem; font-weight: bold; }
 
-        .color-selector { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
-        .circle-btn { width: 42px; height: 42px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-        .circle-btn.selected { border-color: #333; transform: scale(1.1); }
+        .color-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; }
+        .circle-btn { width: 48px; height: 48px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+        .circle-btn.selected { border-color: #333; transform: scale(1.1); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+
+        /* 防災ガイド：通常時は非表示、防災モードの時だけ表示 */
+        #btn-desc { text-align: center; font-size: 0.85rem; margin-bottom: 15px; font-weight: bold; min-height: 1.2em; display: none; }
 
         .c-pale-green { background: #CAFFBF; } .c-pale-blue { background: #A0C4FF; } .c-pale-yellow { background: #FDFFB6; } .c-pale-red { background: #FFADAD; }
         .c-red { background: #FF0000; } .c-yellow { background: #FFD700; } .c-green { background: #32CD32; }
 
-        /* モード別スタイル */
+        /* 通常モード */
         body.normal-mode .mode-btn.n-active { background: #4dabf7; color: white; border-color: #4dabf7; }
         body.normal-mode #post-button { background: #4dabf7; }
-        body.normal-mode .emergency-btns { display: none; }
+        body.normal-mode .emergency-ui { display: none; }
 
+        /* 防災モード */
         body.emergency-mode { background-color: #2a0a0a; color: white; }
         body.emergency-mode header, body.emergency-mode .mode-switcher { background: #441111; border-color: #552222; }
         body.emergency-mode .mode-btn.e-active { background: #ff0000; color: white; border-color: #ff0000; }
         body.emergency-mode #post-form { background: #441111; }
         body.emergency-mode textarea { background: #552222; border-color: #663333; color: white; }
         body.emergency-mode #post-button { background: #ff0000; }
-        body.emergency-mode .normal-btns { display: none; }
+        body.emergency-mode .normal-ui { display: none; }
+        body.emergency-mode #btn-desc { display: block; color: #ffcccc; } /* 防災時のみ表示 */
+        body.emergency-mode .circle-btn.selected { border-color: white; }
         
         .hide-btn { margin-top: 10px; padding: 6px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; color: #666; font-size: 11px; width: 100%; }
-        .hide-btn:hover { background: #eee; }
-
-        /* ★重要：吹き出しの中の文字色を強制的に黒にする（非常モードの白文字対策） */
         .gm-style-iw { color: #333 !important; }
-        .gm-style-iw div { color: #333 !important; }
     </style>
 </head>
 <body class="normal-mode">
 
-    <header><h1 id="title">じょうそうマップ</h1></header>
+    <header><h1 id="title">JORFOR MAP</h1></header>
     <div class="mode-switcher">
         <div id="m-n" class="mode-btn n-active" onclick="switchMode('normal')">通常モード</div>
         <div id="m-e" class="mode-btn" onclick="switchMode('emergency')">防災モード</div>
     </div>
+
     <div id="map"></div>
+
     <form id="post-form">
-        <label id="msg-label">いまの様子を色でえらんでね</label>
-        <div class="color-selector normal-btns">
-            <div class="circle-btn c-pale-green selected" onclick="pick('pale-green', this)"></div>
-            <div class="circle-btn c-pale-blue" onclick="pick('pale-blue', this)"></div>
-            <div class="circle-btn c-pale-yellow" onclick="pick('pale-yellow', this)"></div>
-            <div class="circle-btn c-pale-red" onclick="pick('pale-red', this)"></div>
+        <div class="normal-ui">
+            <div class="color-selector">
+                <div class="circle-btn c-pale-green selected" onclick="pick('pale-green', this, '')"></div>
+                <div class="circle-btn c-pale-blue" onclick="pick('pale-blue', this, '')"></div>
+                <div class="circle-btn c-pale-yellow" onclick="pick('pale-yellow', this, '')"></div>
+                <div class="circle-btn c-pale-red" onclick="pick('pale-red', this, '')"></div>
+            </div>
         </div>
-        <div class="color-selector emergency-btns">
-            <div class="circle-btn c-red" onclick="pick('red', this)">🚨</div>
-            <div class="circle-btn c-yellow" onclick="pick('yellow', this)">⚠️</div>
-            <div class="circle-btn c-green" onclick="pick('green', this)">🍵</div>
+
+        <div class="emergency-ui">
+            <div class="color-selector">
+                <div class="circle-btn c-red" onclick="pick('red', this, '🚨 救助要請（至急！）')">🚨</div>
+                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '🟡 被害あり（建物・浸水）')">🟡</div>
+                <div class="circle-btn c-green" onclick="pick('green', this, '🟢 被害なし（無事報告）')">🟢</div>
+            </div>
+            <div id="btn-desc" class="btn-guide">🚨 救助要請（至急！）</div>
         </div>
+
         <input type="hidden" id="selected-val" value="pale-green">
-        <textarea id="post-text" placeholder="つぶやく..."></textarea>
+        <textarea id="post-text" placeholder="メッセージを入力..."></textarea>
         <button type="submit" id="post-button">みんなに教える</button>
     </form>
     
@@ -97,18 +106,20 @@
             document.getElementById('m-n').classList.toggle('n-active', m==='normal');
             document.getElementById('m-e').classList.toggle('e-active', m==='emergency');
             document.getElementById('title').innerText = m==='normal' ? "JORFOR MAP" : "🚨 防災モード";
-            document.getElementById('msg-label').innerText = m==='normal' ? "今の気持ちを選ぶ" : "被害状況を選ぶ";
-            document.getElementById('post-button').innerText = m==='normal' ? "みんなに教える" : "投稿する";
             
-            const firstBtn = document.querySelector('.' + (m==='normal' ? 'normal-btns' : 'emergency-btns') + ' .circle-btn');
-            pick(m==='normal' ? 'pale-green' : 'red', firstBtn);
+            if(m === 'normal') {
+                pick('pale-green', document.querySelector('.normal-ui .circle-btn'), '');
+            } else {
+                pick('red', document.querySelector('.emergency-ui .circle-btn'), '🚨 救助要請（至急！）');
+            }
             renderMarkers();
         }
 
-        function pick(val, el) {
+        function pick(val, el, desc) {
             document.getElementById('selected-val').value = val;
             document.querySelectorAll('.circle-btn').forEach(b => b.classList.remove('selected'));
             el.classList.add('selected');
+            document.getElementById('btn-desc').innerText = desc;
         }
 
         function hidePost(id) {
@@ -128,11 +139,9 @@
         }
 
         function load() {
-            db.collection('posts').orderBy('timestamp', 'desc').limit(50).onSnapshot(snap => {
+            db.collection('posts').orderBy('timestamp', 'desc').limit(100).onSnapshot(snap => {
                 allDocsData = [];
-                snap.forEach(doc => {
-                    allDocsData.push({ id: doc.id, data: doc.data() });
-                });
+                snap.forEach(doc => { allDocsData.push({ id: doc.id, data: doc.data() }); });
                 renderMarkers();
             });
         }
@@ -140,21 +149,22 @@
         function renderMarkers() {
             markers.forEach(m => m.setMap(null));
             markers = [];
+            const counts = {};
 
             allDocsData.forEach(item => {
                 const d = item.data;
                 const id = item.id;
+                const cat = d.category;
+                if (hiddenPosts.includes(id) || !d.lat || !d.lng) return;
+                if (currentMode === 'emergency' && cat.startsWith('pale-')) return;
 
-                if (hiddenPosts.includes(id)) return;
-                if(!d.lat || !d.lng) return;
-
-                // 防災モードなら通常（pale-）をスキップ
-                if (currentMode === 'emergency' && d.category.startsWith('pale-')) return;
+                counts[cat] = (counts[cat] || 0) + 1;
+                if (counts[cat] > 4) return; // 1色につき最新4個まで
 
                 let color = "#A0C4FF", size = 22, z = 1;
-                const labels = {'red':'🚨救助','yellow':'⚠️被害','green':'✅無事','pale-red':'注意','pale-blue':'生活','pale-yellow':'発見','pale-green':'自然'};
+                const labels = {'red':'🚨救助要請','yellow':'⚠️被害あり','green':'✅無事報告','pale-red':'注意','pale-blue':'生活','pale-yellow':'発見','pale-green':'自然'};
                 
-                switch(d.category) {
+                switch(cat) {
                     case 'red': color='#ff0000'; size=50; z=100; break;
                     case 'yellow': color='#ffd700'; size=30; z=50; break;
                     case 'green': color='#32cd32'; size=25; break;
@@ -164,22 +174,24 @@
                     case 'pale-green': color='#caffbf'; break;
                 }
 
+                // 座標をわずかにずらす（重なり対策）
+                const jitterLat = (Math.random() - 0.5) * 0.0002;
+                const jitterLng = (Math.random() - 0.5) * 0.0002;
+
                 const m = new google.maps.Marker({
-                    position: {lat:d.lat, lng:d.lng}, map: map, zIndex: z,
+                    position: {lat: d.lat + jitterLat, lng: d.lng + jitterLng}, 
+                    map: map, zIndex: z,
                     icon: { path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z', fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: size/20 }
                 });
 
-                // ★ここが修正点：投稿直後(timestampがnull)の時は、仮に今の時間を入れる
                 let dateObj = d.timestamp ? d.timestamp.toDate() : new Date();
                 const time = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
                 const iw = new google.maps.InfoWindow({ 
-                    content: `<div style="color:#333; font-size:14px; min-width:160px; font-weight:500;">
-                                <div style="margin-bottom:5px; color:#555; font-size:12px;">
-                                    ⏰ ${time} 【${labels[d.category]||'情報'}】
-                                </div>
-                                <div style="font-size:15px;">${d.text}</div>
-                                <button class="hide-btn" onclick="hidePost('${id}')">👁 非表示にする</button>
+                    content: `<div style="color:#333; min-width:160px;">
+                                <div style="margin-bottom:5px; color:#777; font-size:11px;">⏰ ${time} 【${labels[cat]||'情報'}】</div>
+                                <div style="font-size:14px; font-weight:bold;">${d.text}</div>
+                                <button class="hide-btn" onclick="hidePost('${id}')">非表示にする</button>
                               </div>` 
                 });
                 m.addListener('click', () => iw.open(map, m));
