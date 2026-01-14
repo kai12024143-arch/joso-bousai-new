@@ -61,9 +61,9 @@
         </div>
         <div class="emergency-ui">
             <div class="color-selector">
-                <div class="circle-btn c-red" onclick="pick('red', this, '🚨 救助要請（至急！）')">🚨</div>
-                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '🟡 被害あり（建物・浸水）')">🟡</div>
-                <div class="circle-btn c-green" onclick="pick('green', this, '🟢 被害なし（無事報告）')">🟢</div>
+                <div class="circle-btn c-red" onclick="pick('red', this, '🚨 救助要請')"></div>
+                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '🟡 被害あり（建物・浸水）')"></div>
+                <div class="circle-btn c-green" onclick="pick('green', this, '🟢 被害なし（無事報告）')"></div>
             </div>
             <div id="btn-desc" class="btn-guide">🚨 救助要請（至急！）</div>
         </div>
@@ -127,7 +127,7 @@
             document.body.className = m + '-mode';
             document.getElementById('m-n').classList.toggle('n-active', m==='normal');
             document.getElementById('m-e').classList.toggle('e-active', m==='emergency');
-            document.getElementById('title').innerText = m==='normal' ? "JORFOR MAP" : "🚨 防災モード";
+            document.getElementById('title').innerText = m==='normal' ? "JORFOR MAP" : "JORFOR MAP";
             m === 'normal' ? pick('pale-green', document.querySelector('.normal-ui .circle-btn'), '') : pick('red', document.querySelector('.emergency-ui .circle-btn'), '🚨 救助要請（至急！）');
             renderMarkers();
         }
@@ -155,13 +155,94 @@
             load();
         }
 
+/* --- 中略（HTML/CSS部分はそのまま） --- */
+
         function load() {
-            db.collection('posts').orderBy('timestamp', 'desc').limit(100).onSnapshot(snap => {
-                allDocsData = [];
-                snap.forEach(doc => { allDocsData.push({ id: doc.id, data: doc.data() }); });
-                renderMarkers();
+            // 現在から24時間前の時間を計算
+            const yesterday = new Date();
+            yesterday.setHours(yesterday.getHours() - 24);
+
+            // 24時間以内のデータのみを取得するようにフィルターを追加
+            db.collection('posts')
+                .where('timestamp', '>=', yesterday)
+                .orderBy('timestamp', 'desc')
+                .limit(100)
+                .onSnapshot(snap => {
+                    allDocsData = [];
+                    snap.forEach(doc => { allDocsData.push({ id: doc.id, data: doc.data() }); });
+                    renderMarkers();
+                }, err => {
+                    // インデックス未作成の場合はここにエラーが出るので、コンソールを確認してください
+                    console.error("Firestore Error:", err);
+                });
+        }
+
+        function renderMarkers() {
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+            const counts = {};
+
+            // カテゴリごとのラベル設定
+            const emergencyLabels = {
+                'red': '🚨 救助要請（至急！）',
+                'yellow': '🟡 被害あり（建物・浸水）',
+                'green': '🟢 被害なし（無事報告）'
+            };
+
+            allDocsData.forEach((item, index) => {
+                const d = item.data;
+                const id = item.id;
+                const cat = d.category;
+                if (hiddenPosts.includes(id) || !d.lat || !d.lng) return;
+                if (currentMode === 'emergency' && cat.startsWith('pale-')) return;
+
+                counts[cat] = (counts[cat] || 0) + 1;
+                if (counts[cat] > 10) return; // 表示件数制限（必要に応じて調整）
+
+                let color = "#A0C4FF", size = 22;
+                switch(cat) {
+                    case 'red': color='#ff0000'; size=50; break;
+                    case 'yellow': color='#ffd700'; size=30; break;
+                    case 'green': color='#32cd32'; size=25; break;
+                    case 'pale-red': color='#ffadad'; break;
+                    case 'pale-blue': color='#a0c4ff'; break;
+                    case 'pale-yellow': color='#fdffb6'; break;
+                    case 'pale-green': color='#caffbf'; break;
+                }
+
+                const jitterLat = (Math.random() - 0.5) * 0.0002;
+                const jitterLng = (Math.random() - 0.5) * 0.0002;
+                const priority = allDocsData.length - index;
+
+                const m = new google.maps.Marker({
+                    position: {lat: d.lat + jitterLat, lng: d.lng + jitterLng}, 
+                    map: map, zIndex: priority,
+                    icon: { path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z', fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: size/20 }
+                });
+
+                let dateObj = d.timestamp ? d.timestamp.toDate() : new Date();
+                const time = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const imgHtml = d.imageUrl ? `<img src="${d.imageUrl}" class="iw-img">` : '';
+
+                // ★非常時モードの時だけラベル（🚨救助要請！など）を表示する設定
+                const labelHtml = (currentMode === 'emergency' && emergencyLabels[cat]) 
+                    ? `<div style="color:red; font-weight:bold; font-size:12px; margin-bottom:4px;">${emergencyLabels[cat]}</div>` 
+                    : '';
+
+                const iw = new google.maps.InfoWindow({ 
+                    content: `<div style="color:#333; min-width:180px; max-width:200px;">
+                                <div style="margin-bottom:5px; color:#777; font-size:11px;">${time}</div>
+                                ${labelHtml}
+                                <div style="font-size:14px; font-weight:bold;">${d.text}</div>
+                                ${imgHtml}
+                                <button class="hide-btn" onclick="hidePost('${id}')">非表示にする</button>
+                              </div>` 
+                });
+                m.addListener('click', () => iw.open(map, m));
+                markers.push(m);
             });
         }
+/* --- 以下略 --- */
 
         function renderMarkers() {
             markers.forEach(m => m.setMap(null));
