@@ -17,8 +17,8 @@
         .file-input-wrapper { margin-bottom: 15px; text-align: center; }
         #image-preview { width: 100%; max-height: 150px; object-fit: cover; display: none; border-radius: 10px; margin-bottom: 10px; }
         
-        #post-button { padding: 14px; color: white; border: none; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1.1rem; font-weight: bold; transition: 0.2s; }
-        #post-button:disabled { background-color: #ccc !important; cursor: not-allowed; }
+        #post-button { padding: 14px; color: white; border: none; border-radius: 10px; cursor: pointer; width: 100%; font-size: 1.1rem; font-weight: bold; }
+        #post-button:disabled { background-color: #ccc !important; }
 
         .color-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; }
         .circle-btn { width: 48px; height: 48px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
@@ -40,7 +40,7 @@
         body.emergency-mode #btn-desc { display: block; color: #ffcccc; }
         .hide-btn { margin-top: 10px; padding: 6px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; color: #666; font-size: 11px; width: 100%; }
         .gm-style-iw { color: #333 !important; }
-        .iw-img { width: 100%; border-radius: 5px; margin-top: 8px; cursor: pointer; }
+        .iw-img { width: 100%; border-radius: 5px; margin-top: 8px; }
     </style>
 </head>
 <body class="normal-mode">
@@ -74,7 +74,7 @@
         
         <div class="file-input-wrapper">
             <input type="file" id="image-input" accept="image/*" style="display:none">
-            <button type="button" onclick="document.getElementById('image-input').click()" style="background:#eee; border:1px solid #ccc; padding:5px 10px; border-radius:5px; font-size:0.8rem; color:#333;">📸 写真を追加</button>
+            <button type="button" onclick="document.getElementById('image-input').click()" style="background:#eee; border:1px solid #ccc; padding:5px 10px; border-radius:5px; font-size:0.8rem;">📸 写真を追加</button>
         </div>
 
         <button type="submit" id="post-button">投稿する</button>
@@ -82,7 +82,6 @@
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
 
     <script>
         const firebaseConfig = {
@@ -95,20 +94,28 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const storage = firebase.storage();
 
         let hiddenPosts = JSON.parse(localStorage.getItem('joso_hidden_posts') || '[]');
         let map, markers = [];
         let allDocsData = []; 
         let currentMode = 'normal';
 
+        // 画像のBase64文字列
+        let currentImageData = null;
+
         document.getElementById('image-input').onchange = e => {
             const file = e.target.files[0];
             if (file) {
+                // 容量チェック（Firestoreの制限1MBに収まるよう軽く制限）
+                if (file.size > 800000) { 
+                    alert("画像が大きすぎます。もう少し小さい画像を選んでください。");
+                    return;
+                }
                 const reader = new FileReader();
                 reader.onload = e => {
+                    currentImageData = e.target.result; // これが画像データ本体
                     const preview = document.getElementById('image-preview');
-                    preview.src = e.target.result;
+                    preview.src = currentImageData;
                     preview.style.display = 'block';
                 };
                 reader.readAsDataURL(file);
@@ -194,7 +201,7 @@
 
                 let dateObj = d.timestamp ? d.timestamp.toDate() : new Date();
                 const time = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const imgHtml = d.imageUrl ? `<img src="${d.imageUrl}" class="iw-img" onclick="window.open('${d.imageUrl}')">` : '';
+                const imgHtml = d.imageUrl ? `<img src="${d.imageUrl}" class="iw-img">` : '';
 
                 const iw = new google.maps.InfoWindow({ 
                     content: `<div style="color:#333; min-width:180px; max-width:200px;">
@@ -213,48 +220,42 @@
             e.preventDefault();
             const txt = document.getElementById('post-text').value;
             const cat = document.getElementById('selected-val').value;
-            const imageFile = document.getElementById('image-input').files[0];
             
-            if(!txt.trim() && !imageFile) return;
+            if(!txt.trim() && !currentImageData) return;
 
             const btn = document.getElementById('post-button');
-            const originalText = btn.innerText;
             btn.disabled = true;
             btn.innerText = "送信中...";
 
             navigator.geolocation.getCurrentPosition(async p => {
-                try {
-                    let imageUrl = null;
-                    if (imageFile) {
-                        const storageRef = storage.ref(`images/${Date.now()}_${imageFile.name}`);
-                        await storageRef.put(imageFile);
-                        imageUrl = await storageRef.getDownloadURL();
-                    }
-
-                    const loc = {lat: p.coords.latitude, lng: p.coords.longitude};
-                    await db.collection('posts').add({
-                        text: txt, category: cat, lat: loc.lat, lng: loc.lng,
-                        imageUrl: imageUrl, timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    });
-
-                    // 完了通知
-                    alert("✅ 投稿が完了しました！地図に反映されます。");
-
-                    // フォームのリセット
+                const loc = {lat: p.coords.latitude, lng: p.coords.longitude};
+                
+                // Firestoreに直接テキスト化した画像を保存
+                db.collection('posts').add({
+                    text: txt, 
+                    category: cat, 
+                    lat: loc.lat, 
+                    lng: loc.lng,
+                    imageUrl: currentImageData, // ← ここに画像データが入る
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    alert("✅ 投稿が完了しました！");
                     document.getElementById('post-text').value = '';
                     document.getElementById('image-input').value = '';
                     document.getElementById('image-preview').style.display = 'none';
-                    map.panTo(loc);
-                } catch (err) {
-                    alert("投稿に失敗しました: " + err.message);
-                } finally {
+                    currentImageData = null;
                     btn.disabled = false;
-                    btn.innerText = originalText;
-                }
+                    btn.innerText = "投稿する";
+                    map.panTo(loc);
+                }).catch(err => {
+                    alert("エラー: 画像が大きすぎる可能性があります");
+                    btn.disabled = false;
+                    btn.innerText = "投稿する";
+                });
             }, () => {
                 alert("位置情報を許可してください");
                 btn.disabled = false;
-                btn.innerText = originalText;
+                btn.innerText = "投稿する";
             });
         });
     </script>
