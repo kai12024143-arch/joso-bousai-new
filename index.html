@@ -3,50 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>常総防災マップ</title>
+    <title>じょうそうマップ</title>
     <style>
-        #map { height: 600px; width: 100%; border: 1px solid #ccc; }
-        body { font-family: sans-serif; margin: 20px; background-color: #f8f9fa; }
-        h2 { text-align: center; color: #333; }
-        #post-form { margin-top: 20px; padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; margin: 20px auto; }
-        textarea { width: 100%; height: 80px; margin-bottom: 15px; display: block; border: 2px solid #eee; border-radius: 8px; padding: 10px; font-size: 16px; box-sizing: border-box; }
-        select { margin-bottom: 15px; padding: 12px; font-size: 16px; width: 100%; border: 2px solid #eee; border-radius: 8px; background-color: #fff; }
-        .legend { margin: 10px auto; padding: 15px; background: #fff; border-radius: 12px; text-align: center; font-size: 0.85em; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 600px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        button { padding: 15px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 18px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; color: #555; }
+        /* 基本設定 */
+        body { font-family: sans-serif; margin: 0; transition: 0.3s; background-color: #f0f7f9; }
+        #map { height: 450px; width: 100%; border-bottom: 2px solid #ddd; }
+        
+        /* モード切替ボタンのエリア */
+        .mode-switcher {
+            display: flex; justify-content: center; gap: 10px; padding: 15px; background: #fff;
+        }
+        .mode-btn {
+            padding: 10px 20px; border-radius: 20px; border: 2px solid #ddd; cursor: pointer; font-weight: bold; transition: 0.3s;
+        }
+
+        /* --- 通常モードのスタイル --- */
+        body.normal-mode { background-color: #f0f7f9; }
+        .normal-mode .mode-btn.active { background: #4dabf7; color: white; border-color: #4dabf7; }
+        .normal-mode h1 { color: #007bff; }
+        .normal-mode #post-button { background: #4dabf7; }
+
+        /* --- 防災モードのスタイル --- */
+        body.emergency-mode { background-color: #330000; color: white; }
+        .emergency-mode .mode-btn.active { background: #ff0000; color: white; border-color: #ff0000; }
+        .emergency-mode h1 { color: #ff4444; }
+        .emergency-mode #post-form { background: #441111; color: white; box-shadow: 0 4px 15px rgba(255,0,0,0.3); }
+        .emergency-mode #post-button { background: #ff0000; font-size: 1.2rem; }
+        .emergency-mode label { color: #ffcccc; }
+
+        /* 共通フォーム */
+        header { background: #fff; padding: 10px; text-align: center; border-bottom: 1px solid #eee; transition: 0.3s; }
+        .emergency-mode header { background: #000; border-bottom: 1px solid #555; }
+        
+        #post-form { margin: 20px; padding: 20px; background: #fff; border-radius: 15px; transition: 0.3s; }
+        select, textarea { width: 100%; margin-bottom: 15px; border-radius: 10px; padding: 12px; font-size: 16px; box-sizing: border-box; border: 1px solid #ddd; }
+        #post-button { padding: 15px; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
     </style>
 </head>
-<body>
+<body class="normal-mode"> <header>
+        <h1 id="main-title">じょうそうコミュニティマップ</h1>
+    </header>
 
-    <h2>常総コミュニティ防災マップ</h2>
-    <div id="map"></div>
-
-    <div class="legend">
-        <div>🚨 赤：救助要請（大）</div>
-        <div>⚠️ 黄：被害あり</div>
-        <div>✅ 緑：被害なし</div>
-        <div style="color:#666;">（淡色は通常時の情報）</div>
+    <div class="mode-switcher">
+        <div id="btn-normal" class="mode-btn active" onclick="switchMode('normal')">通常時モード</div>
+        <div id="btn-emergency" class="mode-btn" onclick="switchMode('emergency')">非常時モード</div>
     </div>
 
-    <form id="post-form">
-        <label>【今の状況を選択】</label>
-        <select id="post-category">
-            <optgroup label="🚨 緊急・被害報告">
-                <option value="red">🔴 救助要請（至急！）</option>
-                <option value="yellow">🟡 被害あり（浸水・損壊）</option>
-                <option value="green">🟢 被害なし（無事報告）</option>
-            </optgroup>
-            <optgroup label="🌸 通常時の情報共有">
-                <option value="pale-red">淡い赤（注意喚起・小規模トラブル）</option>
-                <option value="pale-blue">淡い青（水場・道路情報）</option>
-                <option value="pale-yellow">淡い黄（お店・生活情報）</option>
-                <option value="pale-green">淡い緑（自然・憩いの場）</option>
-            </optgroup>
-        </select>
+    <div id="map"></div>
 
-        <label>【詳細内容】</label>
-        <textarea id="post-text" placeholder="詳細を入力してください..."></textarea>
-        <button type="submit">投稿する</button>
+    <form id="post-form">
+        <label id="form-label">いまの様子をシェア</label>
+        <select id="post-category">
+            </select>
+        <textarea id="post-text" placeholder="ここにメッセージを入力..."></textarea>
+        <button type="submit" id="post-button">みんなに教える</button>
     </form>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -61,69 +71,90 @@
             messagingSenderId: "659788884587",
             appId: "1:659788884587:web:39b9a1b840039c24875f2e"
         };
-        
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
         let map;
         let markers = [];
 
+        // --- モード切替の処理 ---
+        function switchMode(mode) {
+            const body = document.body;
+            const title = document.getElementById('main-title');
+            const label = document.getElementById('form-label');
+            const btn = document.getElementById('post-button');
+            const select = document.getElementById('post-category');
+            
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+
+            if (mode === 'normal') {
+                body.className = 'normal-mode';
+                document.getElementById('btn-normal').classList.add('active');
+                title.innerText = "じょうそうコミュニティマップ";
+                label.innerText = "いまの様子をシェア";
+                btn.innerText = "みんなに教える";
+                // 通常時の選択肢
+                select.innerHTML = `
+                    <option value="pale-green">淡い緑</option>
+                    <option value="pale-blue">淡い青</option>
+                    <option value="pale-yellow">淡い黄</option>
+                    <option value="pale-red">淡い赤</option>
+                `;
+            } else {
+                body.className = 'emergency-mode';
+                document.getElementById('btn-emergency').classList.add('active');
+                title.innerText = "【緊急】常総防災マップ";
+                label.innerText = "【重要】被害・救助状況を報告";
+                btn.innerText = "緊急情報を投稿する";
+                // 防災時の選択肢
+                select.innerHTML = `
+                    <option value="red">🚨 救助要請（至急！）</option>
+                    <option value="yellow">🟡 被害あり（浸水・損壊）</option>
+                    <option value="green">🟢 被害なし（無事報告）</option>
+                `;
+            }
+        }
+
         function initMap() {
             map = new google.maps.Map(document.getElementById('map'), {
                 zoom: 14, center: { lat: 35.9897, lng: 139.9791 }
             });
+            switchMode('normal'); // 最初は通常モードに設定
             loadPosts(); 
         }
 
-        // ★色とサイズを指定してピン画像(SVG)を作る関数
         function createMarkerIcon(color, size) {
             return {
                 path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z',
-                fillColor: color,
-                fillOpacity: 1,
-                strokeColor: '#000',
-                strokeWeight: 1,
-                scale: size / 20, // 基準サイズ20に対しての倍率
-                labelOrigin: new google.maps.Point(0, -30)
+                fillColor: color, fillOpacity: 0.9, strokeColor: '#fff', strokeWeight: 2, scale: size / 20
             };
         }
 
         function loadPosts() {
             markers.forEach(m => m.setMap(null));
             markers = [];
-
             db.collection('posts').orderBy('timestamp', 'desc').limit(50).get().then((snapshot) => {
                 snapshot.forEach((doc) => {
                     const data = doc.data();
-                    if(!data.lat || !data.lng) return;
-
-                    let color = "#888"; // デフォルト
-                    let size = 25;      // デフォルトサイズ
-
-                    // カテゴリーごとの色とサイズ設定
+                    let color = "#A0C4FF"; let size = 20; 
                     switch(data.category) {
-                        case "red": color = "#FF0000"; size = 50; break; // 救助要請：濃い赤・特大
-                        case "yellow": color = "#FFD700"; size = 30; break; // 被害あり：金/黄・中
-                        case "green": color = "#32CD32"; size = 25; break;  // 被害なし：緑・通常
-                        case "pale-red": color = "#FFADAD"; size = 22; break; // 淡い赤
-                        case "pale-blue": color = "#A0C4FF"; size = 22; break; // 淡い青
-                        case "pale-yellow": color = "#FDFFB6"; size = 22; break; // 淡い黄
-                        case "pale-green": color = "#CAFFBF"; size = 22; break; // 淡い緑
+                        case "red": color = "#FF0000"; size = 45; break;
+                        case "yellow": color = "#FFD700"; size = 30; break;
+                        case "green": color = "#32CD32"; size = 25; break;
+                        case "pale-red": color = "#FFADAD"; size = 20; break;
+                        case "pale-blue": color = "#A0C4FF"; size = 20; break;
+                        case "pale-yellow": color = "#FDFFB6"; size = 20; break;
+                        case "pale-green": color = "#CAFFBF"; size = 20; break;
                     }
-
                     const marker = new google.maps.Marker({
                         position: { lat: data.lat, lng: data.lng },
                         map: map,
                         icon: createMarkerIcon(color, size),
                         zIndex: (data.category === "red") ? 100 : 1
                     });
-
                     const infoWindow = new google.maps.InfoWindow({
                         content: `<div style="color:#333;">${data.text}</div>`
                     });
-
                     marker.addListener('click', () => infoWindow.open(map, marker));
                     markers.push(marker);
                 });
@@ -135,7 +166,6 @@
             const text = document.getElementById('post-text').value;
             const category = document.getElementById('post-category').value;
             if (!text.trim()) return;
-
             navigator.geolocation.getCurrentPosition((pos) => {
                 db.collection('posts').add({
                     text: text, category: category,
@@ -143,8 +173,8 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 }).then(() => {
                     document.getElementById('post-text').value = '';
-                    alert("投稿しました！");
                     loadPosts();
+                    alert("投稿しました！");
                 });
             });
         });
