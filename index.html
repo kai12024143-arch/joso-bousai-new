@@ -80,4 +80,186 @@
         <button type="submit" id="post-button">投稿する</button>
     </form>
     
-    <script src="
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMOr6Kag-PCGL6piRVtjCDukk01aurb1M",
+            authDomain: "joso-13c95.firebaseapp.com",
+            projectId: "joso-13c95",
+            storageBucket: "joso-13c95.appspot.com",
+            messagingSenderId: "659788884587",
+            appId: "1:659788884587:web:39b9a1b840039c24875f2e"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let hiddenPosts = JSON.parse(localStorage.getItem('joso_hidden_posts') || '[]');
+        let map, markers = [];
+        let allDocsData = []; 
+        let currentMode = 'normal';
+        let currentImageData = null;
+
+        document.getElementById('image-input').onchange = e => {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 800000) { 
+                    alert("画像が大きすぎます。もう少し小さい画像を選んでください。");
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = e => {
+                    currentImageData = e.target.result;
+                    const preview = document.getElementById('image-preview');
+                    preview.src = currentImageData;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        function switchMode(m) {
+            currentMode = m; 
+            document.body.className = m + '-mode';
+            document.getElementById('m-n').classList.toggle('n-active', m==='normal');
+            document.getElementById('m-e').classList.toggle('e-active', m==='emergency');
+            m === 'normal' ? pick('pale-green', document.querySelector('.normal-ui .circle-btn'), '') : pick('red', document.querySelector('.emergency-ui .circle-btn'), '🚨 救助要請（至急！）');
+            renderMarkers();
+        }
+
+        function pick(val, el, desc) {
+            document.getElementById('selected-val').value = val;
+            document.querySelectorAll('.circle-btn').forEach(b => b.classList.remove('selected'));
+            el.classList.add('selected');
+            document.getElementById('btn-desc').innerText = desc;
+        }
+
+        function hidePost(id) {
+            if (confirm("この投稿を非表示にしますか？")) {
+                hiddenPosts.push(id);
+                localStorage.setItem('joso_hidden_posts', JSON.stringify(hiddenPosts));
+                renderMarkers(); 
+            }
+        }
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 14, center: { lat: 35.9897, lng: 139.9791 },
+                disableDefaultUI: true, zoomControl: true
+            });
+            load();
+        }
+
+        function load() {
+            const yesterday = new Date();
+            yesterday.setHours(yesterday.getHours() - 24);
+
+            db.collection('posts')
+                .where('timestamp', '>=', yesterday)
+                .orderBy('timestamp', 'desc')
+                .onSnapshot(snap => {
+                    allDocsData = [];
+                    snap.forEach(doc => { allDocsData.push({ id: doc.id, data: doc.data() }); });
+                    renderMarkers();
+                }, err => {
+                    console.error("Firestore Error:", err);
+                    // ⚠️ ここでコンソールに「Indexが必要」というリンクが出たらクリックして作成してください
+                });
+        }
+
+        function renderMarkers() {
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+            
+            const emergencyLabels = {
+                'red': '🚨 救助要請（至急！）',
+                'yellow': '⚠️ 被害あり（建物・浸水）',
+                'green': '🍵 被害なし（無事報告）'
+            };
+
+            allDocsData.forEach((item, index) => {
+                const d = item.data;
+                const id = item.id;
+                const cat = d.category;
+                if (hiddenPosts.includes(id) || !d.lat || !d.lng) return;
+                if (currentMode === 'emergency' && cat.startsWith('pale-')) return;
+
+                let color = "#A0C4FF", size = 22;
+                switch(cat) {
+                    case 'red': color='#ff0000'; size=50; break;
+                    case 'yellow': color='#ffd700'; size=30; break;
+                    case 'green': color='#32cd32'; size=25; break;
+                    case 'pale-red': color='#ffadad'; break;
+                    case 'pale-blue': color='#a0c4ff'; break;
+                    case 'pale-yellow': color='#fdffb6'; break;
+                    case 'pale-green': color='#caffbf'; break;
+                }
+
+                const m = new google.maps.Marker({
+                    position: {lat: d.lat + (Math.random()-0.5)*0.0002, lng: d.lng + (Math.random()-0.5)*0.0002}, 
+                    map: map,
+                    icon: { path: 'M 0,0 C -2,-20 -10,-22 -10,-30 A 10,10 0 1,1 10,-30 C 10,-22 2,-20 0,0 z', fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: size/20 }
+                });
+
+                let dateObj = d.timestamp ? d.timestamp.toDate() : new Date();
+                const time = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const imgHtml = d.imageUrl ? `<img src="${d.imageUrl}" class="iw-img">` : '';
+                
+                // 非常時モードの時だけ吹き出し内にラベルを表示
+                const labelHtml = (currentMode === 'emergency' && emergencyLabels[cat]) 
+                    ? `<div style="color:red; font-weight:bold; font-size:14px; margin-bottom:4px;">${emergencyLabels[cat]}</div>` 
+                    : '';
+
+                const iw = new google.maps.InfoWindow({ 
+                    content: `<div style="color:#333; min-width:180px; max-width:200px;">
+                                <div style="margin-bottom:5px; color:#777; font-size:11px;">${time}</div>
+                                ${labelHtml}
+                                <div style="font-size:14px; font-weight:bold;">${d.text}</div>
+                                ${imgHtml}
+                                <button class="hide-btn" onclick="hidePost('${id}')">非表示にする</button>
+                              </div>` 
+                });
+                m.addListener('click', () => iw.open(map, m));
+                markers.push(m);
+            });
+        }
+
+        document.getElementById('post-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const txt = document.getElementById('post-text').value;
+            const cat = document.getElementById('selected-val').value;
+            if(!txt.trim() && !currentImageData) return;
+
+            const btn = document.getElementById('post-button');
+            btn.disabled = true;
+            btn.innerText = "送信中...";
+
+            navigator.geolocation.getCurrentPosition(async p => {
+                const loc = {lat: p.coords.latitude, lng: p.coords.longitude};
+                db.collection('posts').add({
+                    text: txt, category: cat, lat: loc.lat, lng: loc.lng,
+                    imageUrl: currentImageData,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                    alert("✅ 投稿が完了しました！");
+                    document.getElementById('post-text').value = '';
+                    document.getElementById('image-input').value = '';
+                    document.getElementById('image-preview').style.display = 'none';
+                    currentImageData = null;
+                    btn.disabled = false;
+                    btn.innerText = "投稿する";
+                    map.panTo(loc);
+                }).catch(err => {
+                    alert("エラーが発生しました。");
+                    btn.disabled = false;
+                });
+            }, () => {
+                alert("位置情報を許可してください");
+                btn.disabled = false;
+            });
+        });
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB7hvh-OUCTVM62geqN543IMtgEWl-eeTQ&callback=initMap"></script>
+</body>
+</html>
