@@ -31,7 +31,7 @@
         body.normal-mode #post-button { background: #4dabf7; }
         body.normal-mode .emergency-ui { display: none; }
 
-        /* 防災モード */
+        /* 非常時モード */
         body.emergency-mode { background-color: #2a0a0a; color: white; }
         body.emergency-mode header, body.emergency-mode .mode-switcher { background: #441111; border-color: #552222; }
         body.emergency-mode .mode-btn.e-active { background: #ff0000; color: white; border-color: #ff0000; }
@@ -105,7 +105,7 @@
             document.body.className = m + '-mode';
             document.getElementById('m-n').classList.toggle('n-active', m==='normal');
             document.getElementById('m-e').classList.toggle('e-active', m==='emergency');
-            document.getElementById('title').innerText = m==='normal' ? "JORFOR MAP" : "🚨 防災モード";
+            document.getElementById('title').innerText = m==='normal' ? "JORFOR MAP" : "🚨 非常時モード";
             
             if(m === 'normal') {
                 pick('pale-green', document.querySelector('.normal-ui .circle-btn'), '');
