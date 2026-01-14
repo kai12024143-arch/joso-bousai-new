@@ -61,9 +61,9 @@
         </div>
         <div class="emergency-ui">
             <div class="color-selector">
-                <div class="circle-btn c-red" onclick="pick('red', this, '🚨 救助要請')"></div>
-                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '🟡 被害あり（建物・浸水）')"></div>
-                <div class="circle-btn c-green" onclick="pick('green', this, '🟢 被害なし（無事報告）')"></div>
+                <div class="circle-btn c-red" onclick="pick('red', this, '🚨救助要請')"></div>
+                <div class="circle-btn c-yellow" onclick="pick('yellow', this, '被害あり（建物・浸水）')"></div>
+                <div class="circle-btn c-green" onclick="pick('green', this, '被害なし（無事報告）')"></div>
             </div>
             <div id="btn-desc" class="btn-guide">🚨 救助要請（至急！）</div>
         </div>
@@ -185,8 +185,8 @@
             // カテゴリごとのラベル設定
             const emergencyLabels = {
                 'red': '🚨 救助要請（至急！）',
-                'yellow': '🟡 被害あり（建物・浸水）',
-                'green': '🟢 被害なし（無事報告）'
+                'yellow': '⚠️ 被害あり（建物・浸水）',
+                'green': '🍵 被害なし（無事報告）'
             };
 
             allDocsData.forEach((item, index) => {
@@ -224,24 +224,19 @@
                 const time = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                 const imgHtml = d.imageUrl ? `<img src="${d.imageUrl}" class="iw-img">` : '';
 
-                // ★非常時モードの時だけラベル（🚨救助要請！など）を表示する設定
-                const labelHtml = (currentMode === 'emergency' && emergencyLabels[cat]) 
-                    ? `<div style="color:red; font-weight:bold; font-size:12px; margin-bottom:4px;">${emergencyLabels[cat]}</div>` 
-                    : '';
+// ★非常時モードの時だけラベル（🚨救助要請！など）を表示する設定
+const labelHtml = (currentMode === 'emergency' && emergencyLabels[cat]) 
+    ? `<div style="color:red; font-weight:bold; font-size:14px; margin-bottom:4px;">${emergencyLabels[cat]}</div>` 
+    : '';
 
-                const iw = new google.maps.InfoWindow({ 
-                    content: `<div style="color:#333; min-width:180px; max-width:200px;">
-                                <div style="margin-bottom:5px; color:#777; font-size:11px;">${time}</div>
-                                ${labelHtml}
-                                <div style="font-size:14px; font-weight:bold;">${d.text}</div>
-                                ${imgHtml}
-                                <button class="hide-btn" onclick="hidePost('${id}')">非表示にする</button>
-                              </div>` 
-                });
-                m.addListener('click', () => iw.open(map, m));
-                markers.push(m);
-            });
-        }
+const iw = new google.maps.InfoWindow({ 
+    content: `<div style="color:#333; min-width:180px; max-width:200px;">
+                <div style="margin-bottom:5px; color:#777; font-size:11px;">${time}</div>
+                ${labelHtml}  <div style="font-size:14px; font-weight:bold;">${d.text}</div>
+                ${imgHtml}
+                <button class="hide-btn" onclick="hidePost('${id}')">非表示にする</button>
+              </div>` 
+});
 /* --- 以下略 --- */
 
         function renderMarkers() {
